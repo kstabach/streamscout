@@ -31,13 +31,17 @@ export default function Home() {
   };
 
   const handleMovieClick = async (movie: SearchResult) => {
+    console.log('Movie clicked:', movie.title);
     setIsLoadingDetails(true);
     try {
       const response = await fetch(`/api/enrich?id=${movie.id}`);
+      console.log('Enrich response status:', response.status);
       const enriched = await response.json();
+      console.log('Enriched data:', enriched);
       setSelectedMovie(enriched);
     } catch (error) {
       console.error('Failed to load movie details:', error);
+      alert('Failed to load movie details. Check console for errors.');
     } finally {
       setIsLoadingDetails(false);
     }
