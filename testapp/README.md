@@ -1,36 +1,148 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# StreamScout
+
+A web application that enriches movie data by combining multiple APIs (TMDB, Streaming Availability, OMDb) to show where to watch movies with aggregated ratings.
+
+## Features
+
+- 🔍 Search for movies and TV shows
+- 🎬 See where content is available to stream
+- ⭐ Aggregated ratings from IMDb and Rotten Tomatoes
+- 📺 Watch trailers directly
+- 📱 Responsive mobile-first design
+
+## Tech Stack
+
+- **Frontend:** Next.js 14, React, TypeScript, Tailwind CSS
+- **APIs:** TMDB, Streaming Availability (RapidAPI), OMDb
+- **Deployment:** Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ installed
+- API keys from:
+  - [TMDB](https://www.themoviedb.org/settings/api)
+  - [OMDb](http://www.omdbapi.com/apikey.aspx)
+  - [Streaming Availability](https://rapidapi.com/movie-of-the-night-movie-of-the-night-default/api/streaming-availability) (RapidAPI)
+
+### Installation
+
+1. Clone the repository
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <your-repo-url>
+cd streamscout
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Create `.env.local` file with your API keys
+```bash
+TMDB_API_KEY=your_tmdb_key
+OMDB_API_KEY=your_omdb_key
+STREAMING_API_KEY=your_rapidapi_key
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Run development server
+```bash
+npm run dev
+```
 
-## Learn More
+5. Open [http://localhost:3000](http://localhost:3000)
 
-To learn more about Next.js, take a look at the following resources:
+## Project Structure
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```
+streamscout/
+├── app/
+│   ├── api/              # API routes
+│   │   ├── search/       # Movie search endpoint
+│   │   └── enrich/       # Data enrichment endpoint
+│   ├── page.tsx          # Main page
+│   └── layout.tsx        # Root layout
+├── components/
+│   ├── SearchBar.tsx     # Search input component
+│   ├── MovieCard.tsx     # Movie result card
+│   └── DetailModal.tsx   # Movie details modal
+├── lib/
+│   ├── types.ts          # TypeScript types
+│   ├── cache.ts          # Caching utility
+│   ├── tmdb.ts           # TMDB API client
+│   ├── omdb.ts           # OMDb API client
+│   ├── streaming.ts      # Streaming API client
+│   └── utils.ts          # Utility functions
+└── public/               # Static assets
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## API Endpoints
 
-## Deploy on Vercel
+### GET /api/search
+Search for movies by title.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+**Query Params:**
+- `query` - Search query string
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Response:**
+```json
+{
+  "results": [
+    {
+      "id": 27205,
+      "title": "Inception",
+      "year": "2010",
+      "poster": "https://...",
+      "rating": 8.8
+    }
+  ]
+}
+```
+
+### GET /api/enrich
+Get enriched movie details.
+
+**Query Params:**
+- `id` - TMDB movie ID
+
+**Response:**
+```json
+{
+  "id": 27205,
+  "title": "Inception",
+  "year": "2010",
+  "poster": "https://...",
+  "overview": "...",
+  "rating": {
+    "imdb": 8.8,
+    "rottenTomatoes": 87,
+    "combined": 8.75
+  },
+  "streamingOptions": [
+    {
+      "service": "Netflix",
+      "type": "subscription",
+      "link": "https://..."
+    }
+  ],
+  "runtime": 148,
+  "genres": ["Action", "Sci-Fi"],
+  "trailerKey": "YoHD9XEInc0"
+}
+```
+
+## Deployment
+
+Deploy to Vercel:
+
+```bash
+npm install -g vercel
+vercel
+```
+
+Add environment variables in Vercel dashboard.
+
+## License
+
+MIT
