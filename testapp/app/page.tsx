@@ -101,15 +101,15 @@ export default function Home() {
             </div>
           </div>
         )}
-
-        {/* Detail modal */}
-        {selectedMovie && (
-          <DetailModal
-            movie={selectedMovie}
-            onClose={() => setSelectedMovie(null)}
-          />
-        )}
       </div>
+
+      {/* Detail modal - moved outside container for proper positioning */}
+      {selectedMovie && (
+        <DetailModal
+          movie={selectedMovie}
+          onClose={() => setSelectedMovie(null)}
+        />
+      )}
     </main>
   );
 }
