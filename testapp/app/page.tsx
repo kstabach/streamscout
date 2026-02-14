@@ -103,18 +103,24 @@ export default function Home() {
         )}
       </div>
 
-      {/* Detail modal - moved outside container for proper positioning */}
+      {/* Simple test modal */}
       {selectedMovie && (
-        <>
-          {/* Debug: This should appear if state is set */}
-          <div className="fixed top-0 left-0 bg-red-500 text-white p-4 z-[9999]">
-            Modal should show for: {selectedMovie.title}
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center"
+          style={{ zIndex: 99999, position: 'fixed' }}
+          onClick={() => setSelectedMovie(null)}
+        >
+          <div className="bg-white p-8 rounded-lg max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-2xl font-bold mb-4">{selectedMovie.title}</h2>
+            <p className="mb-4">{selectedMovie.overview}</p>
+            <button
+              onClick={() => setSelectedMovie(null)}
+              className="bg-blue-500 text-white px-4 py-2 rounded"
+            >
+              Close
+            </button>
           </div>
-          <DetailModal
-            movie={selectedMovie}
-            onClose={() => setSelectedMovie(null)}
-          />
-        </>
+        </div>
       )}
     </main>
   );
