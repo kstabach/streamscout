@@ -1,0 +1,356 @@
+/**
+ * StreamScout Logger Usage Examples
+ *
+ * This file demonstrates how to use the logging infrastructure
+ * in various scenarios within the StreamScout application.
+ */
+
+import { logger, generateRequestId, Logger, type LogContext } from './logger';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+
+// ============================================================================
+// Example 1: Basic Logging
+// ============================================================================
+
+export function basicLoggingExample() {
+  // Info logging
+  logger.info('Application started');
+
+  // Debug logging (only in development)
+  logger.debug('Loading configuration', { config: 'development' });
+
+  // Warning logging
+  logger.warn('API rate limit approaching', { remaining: 10, limit: 100 });
+
+  // Error logging
+  logger.error('Failed to connect to database', new Error('Connection timeout'));
+}
+
+// ============================================================================
+// Example 2: Request Logging with Correlation IDs
+// ============================================================================
+
+export async function apiRouteExample(request: NextRequest) {
+  // Generate correlation ID for this request
+  const requestId = generateRequestId();
+
+  // Create child logger with request context
+  const requestLogger = logger.child({ requestId });
+
+  const startTime = Date.now();
+
+  try {
+    requestLogger.info('Processing search request', {
+      path: request.nextUrl.pathname,
+      method: request.method,
+    });
+
+    // Your API logic here
+    const response = { results: [] };
+
+    const duration = Date.now() - startTime;
+
+    // Log successful request
+    requestLogger.logRequest(
+      request.method,
+      request.nextUrl.pathname,
+      200,
+      duration,
+      { resultCount: response.results.length }
+    );
+
+    return Response.json(response);
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+
+    // Log failed request
+    requestLogger.error('Request failed', error, {
+      path: request.nextUrl.pathname,
+      method: request.method,
+      duration,
+    });
+
+    requestLogger.logRequest(
+      request.method,
+      request.nextUrl.pathname,
+      500,
+      duration
+    );
+
+    return Response.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+// ============================================================================
+// Example 3: Performance Timing
+// ============================================================================
+
+export async function performanceTimingExample() {
+  // Start a timer
+  const timer = logger.startTimer('Database query');
+
+  try {
+    // Simulate some work
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // End timer with success context
+    timer.end({ status: 'success', rowCount: 42 });
+
+  } catch (error) {
+    // End timer with error context
+    timer.end({ status: 'error' });
+    logger.error('Database query failed', error);
+  }
+}
+
+// ============================================================================
+// Example 4: External API Call Logging
+// ============================================================================
+
+export async function apiCallExample() {
+  const requestId = generateRequestId();
+  const apiLogger = logger.child({ requestId });
+
+  const startTime = Date.now();
+
+  try {
+    const response = await fetch('https://api.themoviedb.org/3/search/movie', {
+      headers: {
+        Authorization: `Bearer ${process.env.TMDB_API_KEY}`,
+      },
+    });
+
+    const duration = Date.now() - startTime;
+
+    apiLogger.logApiCall(
+      'TMDB',
+      '/search/movie',
+      response.status,
+      duration,
+      { query: 'inception' }
+    );
+
+    return await response.json();
+
+  } catch (error) {
+    const duration = Date.now() - startTime;
+
+    apiLogger.logApiCall('TMDB', '/search/movie', 0, duration);
+    apiLogger.error('TMDB API call failed', error);
+
+    throw error;
+  }
+}
+
+// ============================================================================
+// Example 5: Cache Logging
+// ============================================================================
+
+export async function cacheExample(key: string) {
+  const cacheLogger = logger.child({ component: 'cache' });
+
+  // Check cache
+  const cached = null; // getCachedValue(key)
+
+  if (cached) {
+    cacheLogger.logCache('hit', key);
+    return cached;
+  }
+
+  cacheLogger.logCache('miss', key);
+
+  // Fetch fresh data
+  const data = { /* fetched data */ };
+
+  // Set cache
+  cacheLogger.logCache('set', key, { ttl: 300 });
+
+  return data;
+}
+
+// ============================================================================
+// Example 6: Service-Specific Logger
+// ============================================================================
+
+export class TMDBService {
+  private logger: Logger;
+
+  constructor(requestId?: string) {
+    // Create service-specific logger with default context
+    this.logger = logger.child({
+      service: 'tmdb',
+      requestId,
+    });
+  }
+
+  async searchMovies(query: string) {
+    this.logger.info('Searching movies', { query });
+
+    const timer = this.logger.startTimer('TMDB search');
+
+    try {
+      // API call logic here
+      const results = [];
+
+      timer.end({ resultCount: results.length, query });
+
+      return results;
+
+    } catch (error) {
+      this.logger.error('Movie search failed', error, { query });
+      throw error;
+    }
+  }
+
+  async getMovieDetails(movieId: number) {
+    this.logger.info('Fetching movie details', { movieId });
+
+    try {
+      // API call logic here
+      const details = {};
+
+      this.logger.debug('Movie details fetched', { movieId });
+
+      return details;
+
+    } catch (error) {
+      this.logger.error('Failed to fetch movie details', error, { movieId });
+      throw error;
+    }
+  }
+}
+
+// ============================================================================
+// Example 7: Structured Context
+// ============================================================================
+
+export async function enrichedContextExample() {
+  const context: LogContext = {
+    userId: 'user_123',
+    sessionId: 'session_456',
+    feature: 'search',
+    experiment: 'new-ranking-algorithm',
+    version: 'v2',
+  };
+
+  const enrichedLogger = logger.child(context);
+
+  enrichedLogger.info('User performed search', {
+    query: 'action movies',
+    filters: { genre: 'action', year: 2024 },
+  });
+
+  // All subsequent logs will include the base context
+  enrichedLogger.debug('Applying filters');
+  enrichedLogger.info('Search completed', { resultCount: 15, duration: 234 });
+}
+
+// ============================================================================
+// Example 8: Error Handling with Context
+// ============================================================================
+
+export async function errorHandlingExample() {
+  const requestId = generateRequestId();
+  const errorLogger = logger.child({ requestId });
+
+  try {
+    // Simulate an operation that might fail
+    throw new Error('API rate limit exceeded');
+
+  } catch (error) {
+    // Log error with context
+    errorLogger.error(
+      'Search operation failed',
+      error,
+      {
+        operation: 'movie-search',
+        retryAttempt: 1,
+        maxRetries: 3,
+      }
+    );
+
+    // Different error types
+    if (error instanceof Error) {
+      if (error.message.includes('rate limit')) {
+        errorLogger.warn('Backing off due to rate limit', {
+          backoffSeconds: 60,
+        });
+      }
+    }
+  }
+}
+
+// ============================================================================
+// Example 9: Multi-Step Operation Logging
+// ============================================================================
+
+export async function multiStepExample(query: string) {
+  const requestId = generateRequestId();
+  const opLogger = logger.child({ requestId, operation: 'enriched-search' });
+
+  opLogger.info('Starting enriched search', { query });
+
+  try {
+    // Step 1: TMDB search
+    opLogger.debug('Step 1: Searching TMDB', { query });
+    const tmdbTimer = opLogger.startTimer('TMDB search');
+    const tmdbResults = []; // await searchTMDB(query)
+    tmdbTimer.end({ resultCount: tmdbResults.length });
+
+    // Step 2: Enrich with OMDb data
+    opLogger.debug('Step 2: Enriching with OMDb', { count: tmdbResults.length });
+    const omdbTimer = opLogger.startTimer('OMDb enrichment');
+    const enrichedResults = []; // await enrichWithOMDb(tmdbResults)
+    omdbTimer.end({ enrichedCount: enrichedResults.length });
+
+    // Step 3: Fetch streaming data
+    opLogger.debug('Step 3: Fetching streaming availability');
+    const streamTimer = opLogger.startTimer('Streaming data fetch');
+    const finalResults = []; // await addStreamingData(enrichedResults)
+    streamTimer.end({ finalCount: finalResults.length });
+
+    opLogger.info('Enriched search completed', {
+      query,
+      totalResults: finalResults.length,
+    });
+
+    return finalResults;
+
+  } catch (error) {
+    opLogger.error('Enriched search failed', error, { query });
+    throw error;
+  }
+}
+
+// ============================================================================
+// Example 10: Next.js Middleware Integration
+// ============================================================================
+
+export async function middlewareLoggingExample(request: NextRequest) {
+  const requestId = generateRequestId();
+  const middlewareLogger = logger.child({ requestId, layer: 'middleware' });
+
+  const startTime = Date.now();
+
+  middlewareLogger.info('Request received', {
+    path: request.nextUrl.pathname,
+    method: request.method,
+    userAgent: request.headers.get('user-agent'),
+  });
+
+  // Add request ID to response headers for client-side correlation
+  const response = NextResponse.next();
+  response.headers.set('X-Request-ID', requestId);
+
+  const duration = Date.now() - startTime;
+  middlewareLogger.logRequest(
+    request.method,
+    request.nextUrl.pathname,
+    200,
+    duration
+  );
+
+  return response;
+}
