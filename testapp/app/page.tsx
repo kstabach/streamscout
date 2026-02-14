@@ -105,10 +105,16 @@ export default function Home() {
 
       {/* Detail modal - moved outside container for proper positioning */}
       {selectedMovie && (
-        <DetailModal
-          movie={selectedMovie}
-          onClose={() => setSelectedMovie(null)}
-        />
+        <>
+          {/* Debug: This should appear if state is set */}
+          <div className="fixed top-0 left-0 bg-red-500 text-white p-4 z-[9999]">
+            Modal should show for: {selectedMovie.title}
+          </div>
+          <DetailModal
+            movie={selectedMovie}
+            onClose={() => setSelectedMovie(null)}
+          />
+        </>
       )}
     </main>
   );
