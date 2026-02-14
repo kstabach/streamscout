@@ -1,0 +1,248 @@
+/**
+ * Logger Test Suite
+ *
+ * This file demonstrates the logger's functionality and can be run
+ * to verify the logging system works as expected.
+ *
+ * Run with: npx tsx lib/logger.test.ts
+ */
+
+import { logger, generateRequestId, Logger, LogLevel } from './logger';
+
+function separator(title: string) {
+  console.log('\n' + '='.repeat(80));
+  console.log(title);
+  console.log('='.repeat(80));
+}
+
+// ============================================================================
+// Test 1: Basic Log Levels
+// ============================================================================
+
+function testBasicLogLevels() {
+  separator('Test 1: Basic Log Levels');
+
+  logger.debug('This is a debug message', { detail: 'verbose information' });
+  logger.info('This is an info message', { status: 'operational' });
+  logger.warn('This is a warning message', { threshold: 90, current: 95 });
+  logger.error('This is an error message', new Error('Something went wrong'));
+}
+
+// ============================================================================
+// Test 2: Request Correlation IDs
+// ============================================================================
+
+function testRequestCorrelation() {
+  separator('Test 2: Request Correlation IDs');
+
+  const requestId1 = generateRequestId();
+  const requestId2 = generateRequestId();
+
+  const req1Logger = logger.child({ requestId: requestId1 });
+  const req2Logger = logger.child({ requestId: requestId2 });
+
+  req1Logger.info('Processing request 1', { endpoint: '/api/search' });
+  req2Logger.info('Processing request 2', { endpoint: '/api/details' });
+  req1Logger.info('Request 1 completed', { duration: 123 });
+  req2Logger.info('Request 2 completed', { duration: 456 });
+}
+
+// ============================================================================
+// Test 3: Child Loggers
+// ============================================================================
+
+function testChildLoggers() {
+  separator('Test 3: Child Loggers');
+
+  const serviceLogger = logger.child({ service: 'tmdb', version: '1.0' });
+  const requestLogger = serviceLogger.child({ requestId: generateRequestId() });
+
+  serviceLogger.info('Service initialized');
+  requestLogger.info('Processing request', { query: 'inception' });
+  requestLogger.debug('Cache miss', { key: 'search:inception' });
+  requestLogger.info('Request completed', { resultCount: 15 });
+}
+
+// ============================================================================
+// Test 4: Performance Timing
+// ============================================================================
+
+async function testPerformanceTiming() {
+  separator('Test 4: Performance Timing');
+
+  const timer1 = logger.startTimer('Fast operation');
+  await new Promise(resolve => setTimeout(resolve, 50));
+  timer1.end({ status: 'success', items: 10 });
+
+  const timer2 = logger.startTimer('Slow operation');
+  await new Promise(resolve => setTimeout(resolve, 200));
+  timer2.end({ status: 'success', items: 100 });
+
+  const timer3 = logger.startTimer('Failed operation');
+  await new Promise(resolve => setTimeout(resolve, 30));
+  timer3.end({ status: 'error', reason: 'timeout' });
+}
+
+// ============================================================================
+// Test 5: HTTP Request Logging
+// ============================================================================
+
+function testHttpRequestLogging() {
+  separator('Test 5: HTTP Request Logging');
+
+  const reqLogger = logger.child({ requestId: generateRequestId() });
+
+  reqLogger.logRequest('GET', '/api/search', 200, 123, { resultCount: 15 });
+  reqLogger.logRequest('POST', '/api/search', 201, 234, { created: true });
+  reqLogger.logRequest('GET', '/api/details', 404, 45, { movieId: 999 });
+  reqLogger.logRequest('GET', '/api/search', 500, 567, { error: 'Internal error' });
+}
+
+// ============================================================================
+// Test 6: Cache Logging
+// ============================================================================
+
+function testCacheLogging() {
+  separator('Test 6: Cache Logging');
+
+  const cacheLogger = logger.child({ component: 'cache' });
+
+  cacheLogger.logCache('miss', 'search:inception');
+  cacheLogger.logCache('set', 'search:inception', { ttl: 300 });
+  cacheLogger.logCache('hit', 'search:inception');
+  cacheLogger.logCache('hit', 'search:matrix');
+}
+
+// ============================================================================
+// Test 7: API Call Logging
+// ============================================================================
+
+function testApiCallLogging() {
+  separator('Test 7: API Call Logging');
+
+  const apiLogger = logger.child({ requestId: generateRequestId() });
+
+  apiLogger.logApiCall('TMDB', '/search/movie', 200, 145, { query: 'inception' });
+  apiLogger.logApiCall('OMDb', '/movie', 200, 89, { imdbId: 'tt1375666' });
+  apiLogger.logApiCall('StreamingAPI', '/availability', 404, 234, { movieId: 123 });
+  apiLogger.logApiCall('TMDB', '/movie/details', 500, 567);
+}
+
+// ============================================================================
+// Test 8: Error Handling
+// ============================================================================
+
+function testErrorHandling() {
+  separator('Test 8: Error Handling');
+
+  // Standard Error
+  logger.error('Standard error occurred', new Error('Connection timeout'));
+
+  // String error
+  logger.error('String error occurred', 'Something went wrong');
+
+  // Unknown error type
+  logger.error('Unknown error occurred', { weird: 'object' });
+
+  // Error with context
+  logger.error(
+    'Database error with context',
+    new Error('Duplicate key'),
+    { table: 'users', operation: 'insert', userId: '123' }
+  );
+}
+
+// ============================================================================
+// Test 9: Complex Context
+// ============================================================================
+
+function testComplexContext() {
+  separator('Test 9: Complex Context');
+
+  logger.info('Complex context example', {
+    user: {
+      id: 'user_123',
+      email: 'user@example.com',
+      role: 'premium',
+    },
+    session: {
+      id: 'session_456',
+      created: new Date().toISOString(),
+      expiresIn: 3600,
+    },
+    metadata: {
+      ip: '192.168.1.1',
+      userAgent: 'Mozilla/5.0...',
+      locale: 'en-US',
+    },
+    metrics: {
+      requestCount: 42,
+      cacheHitRate: 0.85,
+      avgResponseTime: 234,
+    },
+  });
+}
+
+// ============================================================================
+// Test 10: Multi-Step Operation
+// ============================================================================
+
+async function testMultiStepOperation() {
+  separator('Test 10: Multi-Step Operation');
+
+  const opLogger = logger.child({
+    requestId: generateRequestId(),
+    operation: 'enriched-search',
+  });
+
+  opLogger.info('Starting multi-step operation', { query: 'inception' });
+
+  const step1Timer = opLogger.startTimer('Step 1: TMDB search');
+  await new Promise(resolve => setTimeout(resolve, 100));
+  step1Timer.end({ resultCount: 15 });
+
+  const step2Timer = opLogger.startTimer('Step 2: OMDb enrichment');
+  await new Promise(resolve => setTimeout(resolve, 150));
+  step2Timer.end({ enrichedCount: 12 });
+
+  const step3Timer = opLogger.startTimer('Step 3: Streaming data');
+  await new Promise(resolve => setTimeout(resolve, 200));
+  step3Timer.end({ streamingCount: 8 });
+
+  opLogger.info('Multi-step operation completed', {
+    totalDuration: 450,
+    finalResultCount: 8,
+  });
+}
+
+// ============================================================================
+// Run All Tests
+// ============================================================================
+
+async function runAllTests() {
+  console.log('\n');
+  console.log('╔═══════════════════════════════════════════════════════════════════════════╗');
+  console.log('║                    StreamScout Logger Test Suite                         ║');
+  console.log('╚═══════════════════════════════════════════════════════════════════════════╝');
+
+  testBasicLogLevels();
+  testRequestCorrelation();
+  testChildLoggers();
+  await testPerformanceTiming();
+  testHttpRequestLogging();
+  testCacheLogging();
+  testApiCallLogging();
+  testErrorHandling();
+  testComplexContext();
+  await testMultiStepOperation();
+
+  separator('All Tests Completed');
+  console.log('');
+}
+
+// Run tests if this file is executed directly
+if (require.main === module) {
+  runAllTests().catch(console.error);
+}
+
+export { runAllTests };

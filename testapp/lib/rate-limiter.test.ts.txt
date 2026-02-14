@@ -1,0 +1,171 @@
+/**
+ * Rate Limiter Tests
+ *
+ * Simple validation tests to ensure rate limiter behaves correctly.
+ * Run with: npx ts-node lib/rate-limiter.test.ts
+ */
+
+import { rateLimiters, getRateLimiter } from './rate-limiter';
+
+async function testBasicAcquisition() {
+  console.log('\n=== Test 1: Basic Token Acquisition ===');
+
+  const limiter = rateLimiters.tmdb;
+  const start = Date.now();
+
+  // Should be immediate (tokens available)
+  await limiter.acquire();
+  const elapsed = Date.now() - start;
+
+  console.log(`✓ First acquisition took ${elapsed}ms (should be < 10ms)`);
+  console.log(`  State:`, limiter.getState());
+
+  if (elapsed > 10) {
+    throw new Error('First acquisition should be immediate');
+  }
+}
+
+async function testBurstCapacity() {
+  console.log('\n=== Test 2: Burst Capacity ===');
+
+  const limiter = rateLimiters.omdb; // 10 tokens max
+  const start = Date.now();
+
+  // Should all execute immediately (within burst capacity)
+  for (let i = 0; i < 10; i++) {
+    await limiter.acquire();
+  }
+
+  const elapsed = Date.now() - start;
+  console.log(`✓ 10 requests took ${elapsed}ms (should be < 50ms)`);
+  console.log(`  State:`, limiter.getState());
+
+  if (elapsed > 50) {
+    throw new Error('Burst requests should be immediate');
+  }
+}
+
+async function testRateLimiting() {
+  console.log('\n=== Test 3: Rate Limiting Behavior ===');
+
+  const limiter = rateLimiters.streaming; // 10 tokens, 10/sec refill
+  const start = Date.now();
+
+  // Exhaust tokens
+  for (let i = 0; i < 10; i++) {
+    await limiter.acquire();
+  }
+
+  console.log(`  State after burst:`, limiter.getState());
+
+  // 11th request should wait ~1 second
+  await limiter.acquire();
+  const elapsed = Date.now() - start;
+
+  console.log(`✓ 11th request took ${elapsed}ms (should be ~1000ms)`);
+  console.log(`  State:`, limiter.getState());
+
+  if (elapsed < 900 || elapsed > 1200) {
+    throw new Error(`Expected ~1000ms delay, got ${elapsed}ms`);
+  }
+}
+
+async function testParallelRequests() {
+  console.log('\n=== Test 4: Parallel Requests ===');
+
+  const limiter = rateLimiters.tmdb; // 40 tokens, 4/sec refill
+  const start = Date.now();
+  const timestamps: number[] = [];
+
+  // Fire 45 parallel requests
+  await Promise.all(
+    Array.from({ length: 45 }, async () => {
+      await limiter.acquire();
+      timestamps.push(Date.now() - start);
+    })
+  );
+
+  // First 40 should be immediate, next 4 should wait ~1 second
+  const immediate = timestamps.filter((t) => t < 100).length;
+  const delayed = timestamps.filter((t) => t >= 900 && t < 1200).length;
+
+  console.log(`✓ Immediate requests: ${immediate}/40 expected`);
+  console.log(`✓ Delayed requests (~1s): ${delayed}/4 expected`);
+  console.log(`  State:`, limiter.getState());
+
+  if (immediate < 38 || immediate > 42) {
+    throw new Error(`Expected ~40 immediate requests, got ${immediate}`);
+  }
+}
+
+async function testGetRateLimiter() {
+  console.log('\n=== Test 5: Type-Safe API Access ===');
+
+  const tmdb = getRateLimiter('tmdb');
+  const omdb = getRateLimiter('omdb');
+  const streaming = getRateLimiter('streaming');
+
+  await tmdb.acquire();
+  await omdb.acquire();
+  await streaming.acquire();
+
+  console.log('✓ All rate limiters accessible via type-safe API');
+  console.log('  TMDB state:', tmdb.getState());
+  console.log('  OMDb state:', omdb.getState());
+  console.log('  Streaming state:', streaming.getState());
+}
+
+async function testTokenRefill() {
+  console.log('\n=== Test 6: Token Refill ===');
+
+  const limiter = rateLimiters.omdb; // 10 tokens, 10/sec refill
+
+  // Exhaust all tokens
+  for (let i = 0; i < 10; i++) {
+    await limiter.acquire();
+  }
+
+  console.log('  State after exhaustion:', limiter.getState());
+
+  // Wait 1 second for refill
+  await new Promise((resolve) => setTimeout(resolve, 1100));
+
+  const state = limiter.getState();
+  console.log('  State after 1s wait:', state);
+
+  if (state.availableTokens < 9 || state.availableTokens > 10) {
+    throw new Error(`Expected ~10 tokens after refill, got ${state.availableTokens}`);
+  }
+
+  console.log('✓ Tokens refilled correctly');
+}
+
+async function runAllTests() {
+  console.log('╔═══════════════════════════════════════════╗');
+  console.log('║   StreamScout Rate Limiter Test Suite   ║');
+  console.log('╚═══════════════════════════════════════════╝');
+
+  try {
+    await testBasicAcquisition();
+    await testBurstCapacity();
+    await testRateLimiting();
+    await testParallelRequests();
+    await testGetRateLimiter();
+    await testTokenRefill();
+
+    console.log('\n╔═══════════════════════════════════════════╗');
+    console.log('║        ✓ ALL TESTS PASSED                ║');
+    console.log('╚═══════════════════════════════════════════╝\n');
+  } catch (error) {
+    console.error('\n╔═══════════════════════════════════════════╗');
+    console.error('║        ✗ TEST FAILED                     ║');
+    console.error('╚═══════════════════════════════════════════╝');
+    console.error('\nError:', error);
+    process.exit(1);
+  }
+}
+
+// Run tests if executed directly
+if (require.main === module) {
+  runAllTests();
+}
