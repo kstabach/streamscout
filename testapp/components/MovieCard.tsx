@@ -12,7 +12,7 @@ export default function MovieCard({ movie, onClick }: MovieCardProps) {
   return (
     <div
       onClick={onClick}
-      className="cursor-pointer group transition-transform hover:scale-105"
+      className="cursor-pointer group transition-transform hover:scale-105 w-full max-w-[200px] mx-auto"
     >
       <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-200 shadow-md">
         <Image
