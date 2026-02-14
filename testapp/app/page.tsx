@@ -11,15 +11,19 @@ export default function Home() {
   const [isSearching, setIsSearching] = useState(false);
   const [selectedMovie, setSelectedMovie] = useState<EnrichedMovie | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSearch = async (query: string) => {
     setIsSearching(true);
+    setError(null);
     try {
       const response = await fetch(`/api/search?query=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error('Search failed');
       const data = await response.json();
       setResults(data.results || []);
     } catch (error) {
       console.error('Search failed:', error);
+      setError('Failed to search movies. Please try again.');
       setResults([]);
     } finally {
       setIsSearching(false);
@@ -56,6 +60,13 @@ export default function Home() {
         <div className="mb-12">
           <SearchBar onSearch={handleSearch} isLoading={isSearching} />
         </div>
+
+        {/* Error display */}
+        {error && (
+          <div className="max-w-2xl mx-auto mb-8 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Results */}
         {results.length > 0 && (
