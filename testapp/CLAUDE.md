@@ -17,6 +17,61 @@ When modals or overlays don't appear but exist in DOM:
 
 **Rule**: If 2+ fixes attempted without success, the approach is wrong. Return to Phase 1 investigation.
 
+## General Debugging Protocol
+
+**Multi-fix failure rule**: If attempting a 3rd fix for the same issue without success, STOP immediately:
+1. Return to Phase 1 investigation
+2. Question whether the fundamental approach is wrong
+3. Consider alternative root causes
+4. Do NOT continue trying variations of the same fix
+
+This rule prevents wasting time on the wrong solution path.
+
+## Git Discipline
+
+**Before ANY git operation**, verify current state first:
+- Before committing: Run `git status` and `git log --oneline -3` to check if changes are already committed
+- Before creating PRs: Run `git branch -a` and `gh pr list` to verify branch is not already merged
+- Before pushing: Verify you're on the correct branch and pushing to the right remote
+
+**Git hook failures**:
+- When a git hook fails, read the hook file and fix the broken path/command
+- **NEVER** use `--no-verify` as a permanent workaround
+- Broken hooks indicate environment/setup issues worth fixing permanently
+
+**Keep it simple**:
+- Commit workflows should be 5 steps or fewer
+- Do not over-engineer the commit process
+
+## Agent Delegation Rules
+
+When working with multi-agent workflows or spawning sub-agents:
+
+**Orchestrator role discipline**:
+- When your role is ORCHESTRATOR, delegate work—do NOT execute it yourself
+- If a sub-agent fails, report the failure with error details
+- Do NOT silently take over failed agent work—ask for instructions first
+
+**Task tool usage**:
+- When spawning Task agents for research/implementation, let them complete their work
+- Your job is coordination, not execution
+- Respect agent boundaries and handoff protocols
+
+## Scope Constraints
+
+When the user specifies an explicit scope (e.g., "Phase 1 only", "these 6 fields only", "surgical patch"):
+
+**Treat scope as a HARD boundary**:
+- Do NOT add extra fields beyond what's explicitly requested
+- Do NOT modify extra files outside the stated scope
+- Do NOT expand scope silently
+
+**If scope should be expanded**:
+- ASK first before adding anything out of scope
+- Never make scope decisions unilaterally
+
+This prevents costly revert-and-redo cycles.
+
 ## Git Workflow
 
 ### Pre-Commit Hook Issue
